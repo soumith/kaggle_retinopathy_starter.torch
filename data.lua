@@ -23,3 +23,9 @@ else -- single threaded data loading. useful for debugging
    function donkeys:addjob(f1, f2) f2(f1()) end
    function donkeys:synchronize() end
 end
+
+nTest=nil
+nClasses=5
+donkeys:addjob(function() return #val_labels end, function(v) nTest = v end)
+donkeys:synchronize()
+assert(nTest)

@@ -1,7 +1,30 @@
 require 'image'
 local ffi=require 'ffi'
+tds=require 'tds'
 local loadSize   = {3, 256, 256}
 local sampleSize = {3, 224, 224}
+-- train data is stored in a simple way. 
+-- one table is stored, which has 5 members: 1,2,3,4,5
+-- Each of the members is a tds.hash with the list of image filenames of that class
+train_data = {}
+for i=1,5 do
+   train_data[i] = tds.hash() 
+end
+-- load labels from file
+for l in io.lines(paths.concat(opt.dataRoot, 'train_labels.txt')) do
+   local path, label = unpack(l:split(','))
+   label = tonumber(label) + 1 --make it 1-indexed
+   train_data[label][#train_data[label]+1] = paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg')
+end
+-- val data is stored even more simpler. everything is in one tds.hash as path,label pairs
+val_paths = tds.hash()
+val_labels = tds.hash()
+for l in io.lines(paths.concat(opt.dataRoot, 'val_labels.txt')) do
+   local path, label = unpack(l:split(','))
+   label = tonumber(label) + 1 --make it 1-indexed
+   val_paths[#val_paths+1] = paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg')
+   val_labels[#val_labels+1] = label
+end
 
 local function loadImage(path)
    local input = image.load(path, 3, 'float')
@@ -44,37 +67,58 @@ local function processTest(path)
    return out
 end
 
-local dataset = torch.class('dataLoader')
-
-function dataset:sample(quantity)
+function getTrainingMiniBatch(quantity)
    local data = torch.Tensor(quantity, sampleSize[1], sampleSize[2], sampleSize[3])
    local label = torch.Tensor(quantity)
    for i=1, quantity do
-      local class = torch.random(1, #self.classes)
-      local index = math.ceil(torch.uniform() * self.classListSample[class]:nElement())
-      local imgpath = ffi.string(torch.data(self.imagePath[self.classListSample[class][index] ]))
-      local out = processTrain(imgpath)
+      local class = torch.random(1, 5)
+      local index = torch.random(1, #train_data[class])
+      local out = processTrain(train_data[class][index])
       data[i]:copy(out)
       label[i] = class
    end
    return data, label
 end
 
-function dataset:get(i1, i2)
+function getValidationData(i1, i2)
    local data = torch.Tensor(i2-i1+1, sampleSize[1], sampleSize[2], sampleSize[3])
    local label = torch.Tensor(i2-i1+1)
-   for i=1, i2-i1+1 do
-      local imgpath = ffi.string(torch.data(self.imagePath[i]))
-      local out = processTest(imgpath)
-      data[i]:copy(out)
-      label[i] = self.imageClass[i]
+   for i=i1, i2 do
+      local out = processTest(val_paths[i])
+      data[i-i1+1]:copy(out)
+      label[i-i1+1] = val_labels[i]
    end
    return data, label
 end
 
-trainLoader = torch.load(trainCache)
-testLoader = torch.load(testCache)
-mean = meanstd.mean
-std = meanstd.std
-classes = trainLoader.classes
 collectgarbage()
+-- estimate mean/std per channel
+do
+   local nSamples = 1000
+   print('Estimating the mean (per-channel, shared for all pixels) over ' .. nSamples .. ' randomly sampled training images')
+   local meanEstimate = {0,0,0}
+   for i=1,nSamples do
+      local img = getTrainingMiniBatch(1)[1]
+      for j=1,3 do
+         meanEstimate[j] = meanEstimate[j] + img[j]:mean()
+      end
+   end
+   for j=1,3 do
+      meanEstimate[j] = meanEstimate[j] / nSamples
+   end
+   mean = meanEstimate
+   print('Estimating the std (per-channel, shared for all pixels) over ' .. nSamples .. ' randomly sampled training images')
+   local stdEstimate = {0,0,0}
+   for i=1,nSamples do
+      local img = getTrainingMiniBatch(1)[1]
+      for j=1,3 do
+         stdEstimate[j] = stdEstimate[j] + img[j]:std()
+      end
+   end
+   for j=1,3 do
+      stdEstimate[j] = stdEstimate[j] / nSamples
+   end
+   std = stdEstimate
+end
+
+

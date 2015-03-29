@@ -1,4 +1,5 @@
 require 'cunn'
+require 'optim'
 paths.dofile('fbcunn_files/AbstractParallel.lua')
 paths.dofile('fbcunn_files/ModelParallel.lua')
 paths.dofile('fbcunn_files/DataParallel.lua')
@@ -23,7 +24,7 @@ opt = {
    retrain='',
    dataRoot='./data' -- data in current folder
 }
-for k,v in pairs(opt) do opt[k] = os.getenv(k) or opt[k] end
+for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
 print(opt)
 
 torch.setdefaulttensortype('torch.FloatTensor')
@@ -59,7 +60,7 @@ function train()
    model:training()
    local timer = torch.Timer()
    for i=1,opt.epochSize do
-      donkeys:addjob(function() return trainLoader:sample(opt.batchSize) end, trainBatch)
+      donkeys:addjob(function() return getTrainingMiniBatch(opt.batchSize) end, trainBatch)
    end
    donkeys:synchronize()
    cutorch.synchronize()
@@ -92,7 +93,7 @@ function test()
    for i=1,nTest/opt.batchSize do -- nTest is set in data.lua
       local indexStart = (i-1) * opt.batchSize + 1
       local indexEnd = (indexStart + opt.batchSize - 1)
-      donkeys:addjob(function() return testLoader:get(indexStart, indexEnd) end, testBatch)
+      donkeys:addjob(function() return getValidationData(indexStart, indexEnd) end, testBatch)
    end
    donkeys:synchronize()
    cutorch.synchronize()

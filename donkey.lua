@@ -1,7 +1,6 @@
 require 'image'
-local ffi=require 'ffi'
 tds=require 'tds'
-include('utils.lua')
+utils=require('utils') -- utils.lua in same directory
 local loadSize   = {3, 256, 256}
 local sampleSize = {3, 224, 224}
 -- train data is stored in a simple way. 
@@ -16,7 +15,7 @@ for l in io.lines(paths.concat(opt.dataRoot, 'train_labels.txt')) do
    local path, label = unpack(l:split(','))
    label = tonumber(label) + 1 --make it 1-indexed
    train_data[label][#train_data[label]+1]
-      = loadFileAsByteTensor(paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg'))
+      = utils.loadFileAsByteTensor(paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg'))
 end
 -- val data is stored even more simpler. everything is in one tds.hash as path,label pairs
 val_paths = tds.hash()
@@ -25,7 +24,7 @@ for l in io.lines(paths.concat(opt.dataRoot, 'val_labels.txt')) do
    local path, label = unpack(l:split(','))
    label = tonumber(label) + 1 --make it 1-indexed
    val_paths[#val_paths+1] 
-      = loadFileAsByteTensor(paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg'))
+      = utils.loadFileAsByteTensor(paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg'))
    val_labels[#val_labels+1] = label
 end
 

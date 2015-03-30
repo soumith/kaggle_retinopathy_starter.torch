@@ -31,7 +31,7 @@ torch.setdefaulttensortype('torch.FloatTensor')
 cutorch.setDevice(opt.GPU) -- by default, use GPU 1
 torch.manualSeed(opt.manualSeed)
 include('data.lua')
-include('utils.lua')
+utils=require('utils') -- utils.lua in same directory
 
 -------------- create model --------------
 if opt.retrain ~= '' then -- load model from disk for retraining
@@ -56,7 +56,7 @@ local dataTimer = torch.Timer()
 -------------------- training functions ------------------------
 function train()
    print("==> Training epoch # " .. opt.epoch)
-   loss = 0; batchNumber = 0
+   top1=0; loss = 0; batchNumber = 0
    model:training()
    local timer = torch.Timer()
    for i=1,opt.epochSize do
@@ -65,10 +65,11 @@ function train()
    donkeys:synchronize()
    cutorch.synchronize()
 
+   top1 = top1 * 100 / (opt.batchSize * opt.epochSize)
    loss = loss / opt.epochSize
    total_time = timer:time().real
    train_loss = loss
-   train_accuracy = 0 -- TODO
+   train_accuracy = top1
 end
 
 function trainBatch(inputsCPU, labelsCPU)
@@ -79,6 +80,7 @@ function trainBatch(inputsCPU, labelsCPU)
 
    local err, outputs = optimizer:optimize(optim.sgd, inputs, labels, criterion)
    loss = loss + err
+   top1 = top1 + utils.get_top1(outputs, labelsCPU)
    print(('Epoch: [%d][%d/%d]\tTime %.3f DataTime %.3f Err %.4f '):format(
          opt.epoch, batchNumber, opt.epochSize, timer:time().real, dataLoadingTime, err))
    cutorch.synchronize(); collectgarbage();
@@ -87,7 +89,7 @@ end
 -------------------- testing functions ------------------------
 function test()
    print("==> Validation epoch # " .. opt.epoch)
-   loss = 0; batchNumber = 0
+   top1 = 0; loss = 0; batchNumber = 0
    model:evaluate()
    local timer = torch.Timer()
    for i=1,nTest/opt.batchSize do -- nTest is set in data.lua
@@ -97,7 +99,7 @@ function test()
    end
    donkeys:synchronize()
    cutorch.synchronize()
-
+   top1 = top1 * 100 / nTest
    loss = loss / (nTest/opt.batchSize)
    print({epoch = opt.epoch,
 	  train_time = total_time,
@@ -105,9 +107,9 @@ function test()
 	  train_accuracy = train_accuracy,
 	  test_time = timer:time().real,
 	  test_loss = loss,
-	  test_accuracy = 0, -- TODO
+	  test_accuracy = top1,
 	  best_accuracy = opt.bestAccuracy})
-   return 0 -- TODO
+   return top1
 end
 
 function testBatch(inputsCPU, labelsCPU)
@@ -118,6 +120,7 @@ function testBatch(inputsCPU, labelsCPU)
    local outputs = model:forward(inputs)
    local err = criterion:forward(outputs, labels)
    loss = loss + err
+   top1 = top1 + utils.get_top1(outputs, labelsCPU)
 end
 
 -----------------------------------------------------------------------------
@@ -131,13 +134,13 @@ while (opt.epoch < opt.nEpochs) do
       and (accs[#accs] < accs[#accs - 2] * 1.01) then
          opt.learningRate = opt.learningRate * opt.decay
          if opt.learningRate < 1e-4 then
-            print('stopping job'); os.exit()
+            print('stopping job'); os.exit(0)
          end
    end
    if acc > opt.bestAccuracy then
       opt.bestAccuracy = acc
       torch.save('model_' .. opt.epoch .. '.t7',
-                 {model=sanitize(model), opt=opt})
+                 {model=utils.cleanup(model), opt=opt})
    end
    opt.epoch = opt.epoch + 1
 end

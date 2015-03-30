@@ -1,11 +1,12 @@
 require 'image'
 local ffi=require 'ffi'
 tds=require 'tds'
+include('utils.lua')
 local loadSize   = {3, 256, 256}
 local sampleSize = {3, 224, 224}
 -- train data is stored in a simple way. 
 -- one table is stored, which has 5 members: 1,2,3,4,5
--- Each of the members is a tds.hash with the list of image filenames of that class
+-- Each of the members is a tds.hash with the list of image jpegs of that class (stored as ByteTensor)
 train_data = {}
 for i=1,5 do
    train_data[i] = tds.hash() 
@@ -14,7 +15,8 @@ end
 for l in io.lines(paths.concat(opt.dataRoot, 'train_labels.txt')) do
    local path, label = unpack(l:split(','))
    label = tonumber(label) + 1 --make it 1-indexed
-   train_data[label][#train_data[label]+1] = paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg')
+   train_data[label][#train_data[label]+1]
+      = loadFileAsByteTensor(paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg'))
 end
 -- val data is stored even more simpler. everything is in one tds.hash as path,label pairs
 val_paths = tds.hash()
@@ -22,12 +24,14 @@ val_labels = tds.hash()
 for l in io.lines(paths.concat(opt.dataRoot, 'val_labels.txt')) do
    local path, label = unpack(l:split(','))
    label = tonumber(label) + 1 --make it 1-indexed
-   val_paths[#val_paths+1] = paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg')
+   val_paths[#val_paths+1] 
+      = loadFileAsByteTensor(paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg'))
    val_labels[#val_labels+1] = label
 end
 
 local function loadImage(path)
-   local input = image.load(path, 3, 'float')
+   local input = image.decompressJPG(path, 3, 'float')
+   -- local input = image.load(path, 3, 'float')
    -- find the smaller dimension, and resize it to 256 (while keeping aspect ratio)
    if input:size(3) < input:size(2) then
       input = image.scale(input, 256, 256 * input:size(2) / input:size(3))

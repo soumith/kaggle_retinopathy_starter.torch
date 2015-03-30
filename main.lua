@@ -72,9 +72,8 @@ function train()
 end
 
 function trainBatch(inputsCPU, labelsCPU)
-   cutorch.synchronize(); collectgarbage();
-   batchNumber = batchNumber + 1
    local dataLoadingTime = dataTimer:time().real; timer:reset(); -- timers
+   batchNumber = batchNumber + 1
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
    labels:resize(labelsCPU:size()):copy(labelsCPU)
 
@@ -82,6 +81,7 @@ function trainBatch(inputsCPU, labelsCPU)
    loss = loss + err
    print(('Epoch: [%d][%d/%d]\tTime %.3f DataTime %.3f Err %.4f '):format(
          opt.epoch, batchNumber, opt.epochSize, timer:time().real, dataLoadingTime, err))
+   cutorch.synchronize(); collectgarbage();
    dataTimer:reset()
 end
 -------------------- testing functions ------------------------

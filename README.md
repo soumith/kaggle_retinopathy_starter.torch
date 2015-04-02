@@ -14,4 +14,5 @@ A starter kit in Torch for Kaggle Diabetic Retinopathy Detection.
 ```
 th main.lua
 ```
-
+### Caveats:
+- Remove the header from train_labels.txt (not sure if the data is like this on the server).

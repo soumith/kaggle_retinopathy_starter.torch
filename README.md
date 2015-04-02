@@ -7,7 +7,8 @@ A starter kit in Torch for Kaggle Diabetic Retinopathy Detection.
 - test script to take your trained model and produce Kaggle-compatible CSV file ready for upload
 
 ## Getting started
-- Install torch + dependencies, instructions are here: [INSTALL.md](INSTALL.md)
+- Install torch + dependencies, instructions are here: [INSTALL.md](https://github.com/torch/distro/blob/master/README.md)
+- Install tds (if not installed already) using luarocks install tds
 
 - Run script with:
 ```

@@ -100,10 +100,11 @@ for l in io.lines(paths.concat(opt.dataRoot, 'val_labels.txt')) do
 end
 
 collectgarbage()
+-----------------------------------------
 -- estimate mean/std per channel
+-----------------------------------------
 do
    local nSamples = 1000
-   print('Estimating the mean (per-channel, shared for all pixels) over ' .. nSamples .. ' randomly sampled training images')
    local meanEstimate = {0,0,0}
    for i=1,nSamples do
       local img = getTrainingMiniBatch(1)[1]
@@ -115,7 +116,6 @@ do
       meanEstimate[j] = meanEstimate[j] / nSamples
    end
    mean = meanEstimate
-   print('Estimating the std (per-channel, shared for all pixels) over ' .. nSamples .. ' randomly sampled training images')
    local stdEstimate = {0,0,0}
    for i=1,nSamples do
       local img = getTrainingMiniBatch(1)[1]

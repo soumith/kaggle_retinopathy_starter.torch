@@ -1,16 +1,15 @@
 require 'image'
 tds=require 'tds'
 utils=require('utils') -- utils.lua in same directory
-local loadSize   = {3, 256, 256}
-local sampleSize = {3, 224, 224}
+local sampleSize = {3, opt.sampleSize, opt.sampleSize}
 
 local function loadImage(rawJPG)
    local input = image.decompressJPG(rawJPG, 3, 'float')
-   -- find the smaller dimension, and resize it to loadSize[2] (while keeping aspect ratio)
+   -- find the smaller dimension, and resize it to opt.loadSize (while keeping aspect ratio)
    if input:size(3) < input:size(2) then
-      input = image.scale(input, loadSize[2], loadSize[2] * input:size(2) / input:size(3))
+      input = image.scale(input, opt.loadSize, opt.loadSize * input:size(2) / input:size(3))
    else
-      input = image.scale(input, loadSize[2] * input:size(3) / input:size(2), loadSize[2])
+      input = image.scale(input, opt.loadSize * input:size(3) / input:size(2), opt.loadSize)
    end
    -- mean/std
    for i=1,3 do -- channels

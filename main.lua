@@ -22,6 +22,8 @@ opt = {
    model='alexnetowtbn',
    bestAccuracy = 0,
    retrain='',
+   loadSize={256}, -- height/width of image to load
+   sampleSize={224},-- height/width of image to sample
    dataRoot='./data' -- data in current folder
 }
 for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end

@@ -6,11 +6,11 @@ local sampleSize = {3, 224, 224}
 
 local function loadImage(rawJPG)
    local input = image.decompressJPG(rawJPG, 3, 'float')
-   -- find the smaller dimension, and resize it to 256 (while keeping aspect ratio)
+   -- find the smaller dimension, and resize it to loadSize[2] (while keeping aspect ratio)
    if input:size(3) < input:size(2) then
-      input = image.scale(input, 256, 256 * input:size(2) / input:size(3))
+      input = image.scale(input, loadSize[2], loadSize[2] * input:size(2) / input:size(3))
    else
-      input = image.scale(input, 256 * input:size(3) / input:size(2), 256)
+      input = image.scale(input, loadSize[2] * input:size(3) / input:size(2), loadSize[2])
    end
    -- mean/std
    for i=1,3 do -- channels

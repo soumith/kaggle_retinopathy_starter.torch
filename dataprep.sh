@@ -7,7 +7,7 @@ cd data
 #mkdir -p test
 #mv *.jpeg test/
 
-find . -name "*.jpeg" | xargs -I {} echo 'convert {} -resize "256^>" {} -quality 100 '>commands.txt
+find . -name "*.jpeg" | xargs -I {} echo 'convert {} -resize "256^>" -quality 100 {}'>commands.txt
 cat commands.txt | parallel
 
 unzip trainLabels.csv.zip

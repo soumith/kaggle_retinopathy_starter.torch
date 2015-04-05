@@ -5,3 +5,4 @@ data/train_labels.txt
 data/val_labels.txt
 meanstdCache.t7
 *.t7
+\#*

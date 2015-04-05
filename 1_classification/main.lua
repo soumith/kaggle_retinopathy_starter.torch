@@ -1,9 +1,9 @@
 require 'cunn'
 require 'optim'
-paths.dofile('fbcunn_files/AbstractParallel.lua')
-paths.dofile('fbcunn_files/ModelParallel.lua')
-paths.dofile('fbcunn_files/DataParallel.lua')
-paths.dofile('fbcunn_files/Optim.lua')
+paths.dofile('../fbcunn_files/AbstractParallel.lua')
+paths.dofile('../fbcunn_files/ModelParallel.lua')
+paths.dofile('../fbcunn_files/DataParallel.lua')
+paths.dofile('../fbcunn_files/Optim.lua')
 
 opt = {
    epoch=1,
@@ -23,7 +23,7 @@ opt = {
    retrain='',
    loadSize=256, -- height/width of image to load
    sampleSize=224,-- height/width of image to sample
-   dataRoot='./data' -- data in current folder
+   dataRoot='../data' -- data in current folder
 }
 -- one-line argument parser. parses enviroment variables to override the defaults
 for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
@@ -32,15 +32,15 @@ print(opt)
 torch.setdefaulttensortype('torch.FloatTensor')
 cutorch.setDevice(opt.GPU) -- by default, use GPU 1
 torch.manualSeed(opt.manualSeed)
-include('data.lua')
-utils=require('utils') -- utils.lua in same directory
+paths.dofile('../data.lua')
+utils=paths.dofile('../utils.lua') -- utils.lua in same directory
 
 -------------- create model --------------
 if opt.retrain ~= '' then -- load model from disk for retraining
    model = torch.load(opt.retrain).model
 else
    local config = opt.model
-   paths.dofile('models/' .. config .. '.lua')
+   paths.dofile('../models/' .. config .. '.lua')
    print('=> Creating model from file: models/' .. config .. '.lua')
    model = createModel(opt.nGPU) -- for the model creation code, check the models/ folder
 end

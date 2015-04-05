@@ -1,6 +1,6 @@
 require 'image'
 tds=require 'tds'
-utils=require('utils') -- utils.lua in same directory
+utils=paths.dofile('utils.lua') -- utils.lua in same directory
 local sampleSize = {3, opt.sampleSize, opt.sampleSize}
 local imagesRoot = paths.concat(opt.dataRoot, 'train')
 

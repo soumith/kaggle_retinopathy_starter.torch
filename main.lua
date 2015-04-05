@@ -69,7 +69,7 @@ function train()
 
    top1 = top1 * 100 / (opt.batchSize * opt.epochSize)
    loss = loss / opt.epochSize
-   total_time = timer:time().real
+   train_time = timer:time().real
    train_loss = loss
    train_accuracy = top1
 end
@@ -103,14 +103,8 @@ function test()
    cutorch.synchronize()
    top1 = top1 * 100 / nTest
    loss = loss / (nTest/opt.batchSize)
-   print({epoch = opt.epoch,
-	  train_time = total_time,
-	  train_loss = train_loss,
-	  train_accuracy = train_accuracy,
-	  test_time = timer:time().real,
-	  test_loss = loss,
-	  test_accuracy = top1,
-	  best_accuracy = opt.bestAccuracy})
+   test_time = timer:time().real
+   test_accuracy = top1
    return top1
 end
 
@@ -135,14 +129,20 @@ while (opt.epoch < opt.nEpochs) do
    if (#accs > 3) and (accs[#accs] < accs[#accs - 1] * 1.01)
       and (accs[#accs] < accs[#accs - 2] * 1.01) then
          opt.learningRate = opt.learningRate * opt.decay
-         if opt.learningRate < 1e-4 then
-            print('stopping job'); os.exit(0)
-         end
    end
    if acc > opt.bestAccuracy then
       opt.bestAccuracy = acc
       torch.save('model_' .. opt.epoch .. '.t7',
                  {model=utils.cleanup(model), opt=opt})
    end
+   print('SUMMARY: ', 
+	 'epoch: ' .. opt.epoch,
+	 'train_accuracy: ' .. train_accuracy,
+	 'test_accuracy: ' .. test_accuracy,
+	 'train_loss: ' .. train_loss,
+	 'test_loss: ' .. loss,
+	 'train_time: ' .. math.floor(train_time),
+	 'test_time: ' .. math.floor(test_time),
+	 'best_accuracy: ' .. opt.bestAccuracy)
    opt.epoch = opt.epoch + 1
 end

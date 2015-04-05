@@ -2,14 +2,17 @@ require 'image'
 tds=require 'tds'
 utils=require('utils') -- utils.lua in same directory
 local sampleSize = {3, opt.sampleSize, opt.sampleSize}
+local imagesRoot = paths.concat(opt.dataRoot, 'train')
 
 local function loadImage(rawJPG)
    local input = image.decompressJPG(rawJPG, 3, 'float')
+   local iH = input:size(3)
+   local iW = input:size(2)
    -- find the smaller dimension, and resize it to opt.loadSize (while keeping aspect ratio)
-   if input:size(3) < input:size(2) then
-      input = image.scale(input, opt.loadSize, opt.loadSize * input:size(2) / input:size(3))
-   else
-      input = image.scale(input, opt.loadSize * input:size(3) / input:size(2), opt.loadSize)
+   if iH < iW and iH ~= opt.loadSize then
+      input = image.scale(input, opt.loadSize, opt.loadSize * iW / iH)
+   elseif iW ~= opt.loadSize then
+      input = image.scale(input, opt.loadSize * iH / iW, opt.loadSize)
    end
    -- mean/std
    for i=1,3 do -- channels
@@ -86,7 +89,7 @@ for l in io.lines(paths.concat(opt.dataRoot, 'train_labels.txt')) do
    if tonumber(label) then
       label = tonumber(label) + 1 --make it 1-indexed
       train_data[label][#train_data[label]+1]
-	 = utils.loadFileAsByteTensor(paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg'))
+	 = utils.loadFileAsByteTensor(paths.concat(imagesRoot, path .. '.jpeg'))
    end
 end
 -- val data is stored even more simpler. everything is in one tds.hash as path,label pairs
@@ -97,7 +100,7 @@ for l in io.lines(paths.concat(opt.dataRoot, 'val_labels.txt')) do
    if tonumber(label) then
       label = tonumber(label) + 1 --make it 1-indexed
       val_paths[#val_paths+1] 
-	 = utils.loadFileAsByteTensor(paths.concat(paths.concat(opt.dataRoot, 'train'), path .. '.jpeg'))
+	 = utils.loadFileAsByteTensor(paths.concat(imagesRoot, path .. '.jpeg'))
       val_labels[#val_labels+1] = label
    end
 end
@@ -111,23 +114,15 @@ do
    local meanEstimate = {0,0,0}
    for i=1,nSamples do
       local img = getTrainingMiniBatch(1)[1]
-      for j=1,3 do
-         meanEstimate[j] = meanEstimate[j] + img[j]:mean()
-      end
+      for j=1,3 do meanEstimate[j] = meanEstimate[j] + img[j]:mean() end
    end
-   for j=1,3 do
-      meanEstimate[j] = meanEstimate[j] / nSamples
-   end
+   for j=1,3 do meanEstimate[j] = meanEstimate[j] / nSamples end
    mean = meanEstimate
    local stdEstimate = {0,0,0}
    for i=1,nSamples do
       local img = getTrainingMiniBatch(1)[1]
-      for j=1,3 do
-         stdEstimate[j] = stdEstimate[j] + img[j]:std()
-      end
+      for j=1,3 do stdEstimate[j] = stdEstimate[j] + img[j]:std() end
    end
-   for j=1,3 do
-      stdEstimate[j] = stdEstimate[j] / nSamples
-   end
+   for j=1,3 do stdEstimate[j] = stdEstimate[j] / nSamples end
    std = stdEstimate
 end

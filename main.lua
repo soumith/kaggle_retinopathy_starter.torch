@@ -17,15 +17,15 @@ opt = {
    batchSize = 128,
    GPU = 1,
    nGPU = 4,
-   backend = 'cudnn',
    epochSize = 10000,
-   model='alexnetowtbn',
+   model='alexnetowtbn', -- models/[name].lua will be loaded
    bestAccuracy = 0,
    retrain='',
-   loadSize={256}, -- height/width of image to load
-   sampleSize={224},-- height/width of image to sample
+   loadSize=256, -- height/width of image to load
+   sampleSize=224,-- height/width of image to sample
    dataRoot='./data' -- data in current folder
 }
+-- one-line argument parser. parses enviroment variables to override the defaults
 for k,v in pairs(opt) do opt[k] = tonumber(os.getenv(k)) or os.getenv(k) or opt[k] end
 print(opt)
 
@@ -39,7 +39,7 @@ utils=require('utils') -- utils.lua in same directory
 if opt.retrain ~= '' then -- load model from disk for retraining
    model = torch.load(opt.retrain).model
 else
-   local config = opt.model .. '_' .. opt.backend
+   local config = opt.model
    paths.dofile('models/' .. config .. '.lua')
    print('=> Creating model from file: models/' .. config .. '.lua')
    model = createModel(opt.nGPU) -- for the model creation code, check the models/ folder

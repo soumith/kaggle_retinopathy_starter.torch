@@ -9,6 +9,7 @@ function utils.loadFileAsByteTensor(path)
    return torch.ByteTensor(out)
 end
 
+-- used for classification task
 function utils.get_top1(outputs, labels)
    outputs = outputs:float()
    local top1 = 0

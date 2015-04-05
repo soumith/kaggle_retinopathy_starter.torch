@@ -10,7 +10,7 @@ opt = {
    learningRate = 0.01,
    decay = 0.2,
    weightDecay = 5e-4,
-   momentum = 0.9,
+   momentum = 0.0,
    manualSeed = 1,
    nDonkeys = 4,
    nEpochs = 30,
@@ -59,7 +59,7 @@ local dataTimer = torch.Timer()
 -------------------- training functions ------------------------
 function train()
    print("==> Training epoch # " .. opt.epoch)
-   top1=0; loss = 0; batchNumber = 0
+   correct=0; loss = 0; batchNumber = 0
    model:training()
    local timer = torch.Timer()
    for i=1,opt.epochSize do
@@ -68,11 +68,19 @@ function train()
    donkeys:synchronize()
    cutorch.synchronize()
 
-   top1 = top1 * 100 / (opt.batchSize * opt.epochSize)
+   correct = correct * 100 / (opt.batchSize * opt.epochSize)
    loss = loss / opt.epochSize
    train_time = timer:time().real
    train_loss = loss
-   train_accuracy = top1
+   train_accuracy = correct
+end
+
+function get_correct(outputs, labels)
+   outputs=outputs:float()
+   outputs:round()
+   outputs[outputs:lt(1)] = 1
+   outputs[outputs:gt(5)] = 5
+   return outputs:eq(labels):sum()
 end
 
 function trainBatch(inputsCPU, labelsCPU)
@@ -82,8 +90,9 @@ function trainBatch(inputsCPU, labelsCPU)
    labels:resize(labelsCPU:size()):copy(labelsCPU)
 
    local err, outputs = optimizer:optimize(optim.sgd, inputs, labels, criterion)
+   print(outputs[3][1], labelsCPU[3])
    loss = loss + err
-   top1 = top1 + utils.get_top1(outputs, labelsCPU)
+   correct = correct + get_correct(outputs, labelsCPU)
    print(('Epoch: [%d][%d/%d]\tTime %.3f DataTime %.3f Err %.4f '):format(
          opt.epoch, batchNumber, opt.epochSize, timer:time().real, dataLoadingTime, err))
    cutorch.synchronize(); collectgarbage();
@@ -92,7 +101,7 @@ end
 -------------------- testing functions ------------------------
 function test()
    print("==> Validation epoch # " .. opt.epoch)
-   top1 = 0; loss = 0; batchNumber = 0
+   correct = 0; loss = 0; batchNumber = 0
    model:evaluate()
    local timer = torch.Timer()
    for i=1,nTest/opt.batchSize do -- nTest is set in data.lua
@@ -102,11 +111,11 @@ function test()
    end
    donkeys:synchronize()
    cutorch.synchronize()
-   top1 = top1 * 100 / nTest
+   correct = correct * 100 / nTest
    loss = loss / (nTest/opt.batchSize)
    test_time = timer:time().real
-   test_accuracy = top1
-   return top1
+   test_accuracy = correct
+   return correct
 end
 
 function testBatch(inputsCPU, labelsCPU)
@@ -117,7 +126,7 @@ function testBatch(inputsCPU, labelsCPU)
    local outputs = model:forward(inputs)
    local err = criterion:forward(outputs, labels)
    loss = loss + err
-   top1 = top1 + utils.get_top1(outputs, labelsCPU)
+   correct = correct + get_correct(outputs, labelsCPU)
 end
 
 -----------------------------------------------------------------------------

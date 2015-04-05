@@ -1,6 +1,7 @@
 require 'image'
 tds=require 'tds'
 utils=paths.dofile('utils.lua') -- utils.lua in same directory
+torch.setdefaulttensortype('torch.FloatTensor')
 local sampleSize = {3, opt.sampleSize, opt.sampleSize}
 local imagesRoot = paths.concat(opt.dataRoot, 'train')
 

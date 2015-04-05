@@ -66,9 +66,9 @@ function createModel(nGPU)
    end
    classifier:add(branch2)
    classifier:add(nn.Linear(4096, nClasses))
-   classifier:add(nn.LogSoftMax())
 
    local model = nn.Sequential():add(features):add(classifier)
 
    return model
 end
+

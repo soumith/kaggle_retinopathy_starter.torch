@@ -7,7 +7,7 @@ paths.dofile('../fbcunn_files/Optim.lua')
 
 opt = {
    epoch=1,
-   learningRate = 0.1,
+   learningRate = 0.01,
    decay = 0.2,
    weightDecay = 5e-4,
    momentum = 0.9,
@@ -34,6 +34,7 @@ cutorch.setDevice(opt.GPU) -- by default, use GPU 1
 torch.manualSeed(opt.manualSeed)
 paths.dofile('../data.lua')
 utils=paths.dofile('../utils.lua') -- utils.lua in same directory
+nClasses = 1 -- you are regressing over 1 variable which can go from 1 to 5
 
 -------------- create model --------------
 if opt.retrain ~= '' then -- load model from disk for retraining
@@ -44,7 +45,7 @@ else
    print('=> Creating model from file: models/' .. config .. '.lua')
    model = createModel(opt.nGPU) -- for the model creation code, check the models/ folder
 end
-criterion = nn.CrossEntropyCriterion()
+criterion = nn.MSECriterion()
 print(model)
 model:cuda()
 criterion:cuda()

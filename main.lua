@@ -120,15 +120,16 @@ function testBatch(inputsCPU, labelsCPU)
 end
 
 -----------------------------------------------------------------------------
+optimizer = nn.Optim(model, opt)
 local accs = {}
 while (opt.epoch < opt.nEpochs) do
-   optimizer = nn.Optim(model, opt)
    train()
    local acc = test()
    accs[#accs+1] = acc
    if (#accs > 3) and (accs[#accs] < accs[#accs - 1] * 1.01)
       and (accs[#accs] < accs[#accs - 2] * 1.01) then
          opt.learningRate = opt.learningRate * opt.decay
+	 optimizer = nn.Optim(model, opt)
    end
    if acc > opt.bestAccuracy then
       opt.bestAccuracy = acc

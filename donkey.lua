@@ -110,19 +110,29 @@ collectgarbage()
 -- estimate mean/std per channel
 -----------------------------------------
 do
-   local nSamples = 1000
-   local meanEstimate = {0,0,0}
-   for i=1,nSamples do
-      local img = getTrainingMiniBatch(1)[1]
-      for j=1,3 do meanEstimate[j] = meanEstimate[j] + img[j]:mean() end
+   local meanstdCacheFile = 'meanstdCache.t7'
+   if paths.filep(meanstdCacheFile) then
+      print('Loading mean/std from cache file')
+      local meanstd = torch.load(meanstdCacheFile)
+      mean = meanstd.mean
+      std  = meanstd.std
+   else
+      print('Estimating mean/std from a few images in dataset. Will be cached for future use.')
+      local nSamples = 1000
+      local meanEstimate = {0,0,0}
+      for i=1,nSamples do
+	 local img = getTrainingMiniBatch(1)[1]
+	 for j=1,3 do meanEstimate[j] = meanEstimate[j] + img[j]:mean() end
+      end
+      for j=1,3 do meanEstimate[j] = meanEstimate[j] / nSamples end
+      mean = meanEstimate
+      local stdEstimate = {0,0,0}
+      for i=1,nSamples do
+	 local img = getTrainingMiniBatch(1)[1]
+	 for j=1,3 do stdEstimate[j] = stdEstimate[j] + img[j]:std() end
+      end
+      for j=1,3 do stdEstimate[j] = stdEstimate[j] / nSamples end
+      std = stdEstimate
+      torch.save(meanstdCacheFile, {mean=mean, std=std})
    end
-   for j=1,3 do meanEstimate[j] = meanEstimate[j] / nSamples end
-   mean = meanEstimate
-   local stdEstimate = {0,0,0}
-   for i=1,nSamples do
-      local img = getTrainingMiniBatch(1)[1]
-      for j=1,3 do stdEstimate[j] = stdEstimate[j] + img[j]:std() end
-   end
-   for j=1,3 do stdEstimate[j] = stdEstimate[j] / nSamples end
-   std = stdEstimate
 end

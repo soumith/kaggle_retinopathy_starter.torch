@@ -15,10 +15,10 @@ function createModel(nGPU)
    features:add(cudnn.ReLU(true))
    
    local classifier = nn.Sequential()
-   classifier:add(nn.View(48*6*6))
-   classifier:add(nn.Linear(48*6*6, 256))
+   classifier:add(nn.View(64*11*11))
+   classifier:add(nn.Linear(64*11*11, 256))
    classifier:add(nn.BatchNormalization(256))
-   clasifier:add(nn.ReLU())
+   classifier:add(nn.ReLU())
    classifier:add(nn.Linear(256, nClasses))
    classifier:add(nn.LogSoftMax())
 

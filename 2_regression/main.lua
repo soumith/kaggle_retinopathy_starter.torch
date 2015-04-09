@@ -7,7 +7,7 @@ paths.dofile('../fbcunn_files/Optim.lua')
 
 opt = {
    epoch=1,
-   learningRate = 0.01,
+   learningRate = 0.001,
    decay = 0.2,
    weightDecay = 5e-4,
    momentum = 0.0,
@@ -18,11 +18,11 @@ opt = {
    GPU = 1,
    nGPU = 4,
    epochSize = 10000,
-   model='alexnetowtbn', -- models/[name].lua will be loaded
+   model='small', -- models/[name].lua will be loaded
    bestAccuracy = 0,
    retrain='',
-   loadSize=256, -- height/width of image to load
-   sampleSize=224,-- height/width of image to sample
+   loadSize=64, -- height/width of image to load
+   sampleSize=56,-- height/width of image to sample
    dataRoot='../data' -- data in current folder
 }
 -- one-line argument parser. parses enviroment variables to override the defaults
@@ -76,7 +76,7 @@ function train()
 end
 
 function get_correct(outputs, labels)
-   outputs=outputs:float()
+   outputs=outputs:float():mul(2.5):add(3.5) -- get the outputs in 1,5 scale
    outputs:round()
    outputs[outputs:lt(1)] = 1
    outputs[outputs:gt(5)] = 5
@@ -86,12 +86,14 @@ end
 function trainBatch(inputsCPU, labelsCPU)
    local dataLoadingTime = dataTimer:time().real; timer:reset(); -- timers
    batchNumber = batchNumber + 1
+   labelsCPU:add(-3.5):div(2.5) -- normalize the labels to [-1.0, 1.0]
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
    labels:resize(labelsCPU:size()):copy(labelsCPU)
 
    local err, outputs = optimizer:optimize(optim.sgd, inputs, labels, criterion)
-   print(outputs[3][1], labelsCPU[3])
    loss = loss + err
+   -- unnormalize labels for computing correct
+   labelsCPU:mul(2.5):add(3.5)
    correct = correct + get_correct(outputs, labelsCPU)
    print(('Epoch: [%d][%d/%d]\tTime %.3f DataTime %.3f Err %.4f '):format(
          opt.epoch, batchNumber, opt.epochSize, timer:time().real, dataLoadingTime, err))
@@ -113,6 +115,7 @@ function test()
    cutorch.synchronize()
    correct = correct * 100 / nTest
    loss = loss / (nTest/opt.batchSize)
+   test_loss = loss
    test_time = timer:time().real
    test_accuracy = correct
    return correct
@@ -131,29 +134,32 @@ end
 
 -----------------------------------------------------------------------------
 optimizer = nn.Optim(model, opt)
-local accs = {}
 while (opt.epoch < opt.nEpochs) do
    train()
    local acc = test()
-   accs[#accs+1] = acc
-   if (#accs > 3) and (accs[#accs] < accs[#accs - 1] * 1.01)
-      and (accs[#accs] < accs[#accs - 2] * 1.01) then
-         opt.learningRate = opt.learningRate * opt.decay
-	 optimizer = nn.Optim(model, opt)
+   if opt.epoch % 4 == 0 then
+      -- play around with different types of learning rate decay.
+      -- Do you only want to decay at this constant schedule (decay every 4 epochs),
+      -- or do you think you can do something slightly smarter.
+      opt.learningRate = opt.learningRate * opt.decay
+      optimizer = nn.Optim(model, opt)
    end
    if acc > opt.bestAccuracy then
       opt.bestAccuracy = acc
       torch.save('model_' .. opt.epoch .. '.t7',
                  {model=utils.cleanup(model), opt=opt})
    end
-   print('SUMMARY: ', 
-	 'epoch: ' .. opt.epoch,
-	 'train_accuracy: ' .. train_accuracy,
-	 'test_accuracy: ' .. test_accuracy,
-	 'train_loss: ' .. train_loss,
-	 'test_loss: ' .. loss,
-	 'train_time: ' .. math.floor(train_time),
-	 'test_time: ' .. math.floor(test_time),
-	 'best_accuracy: ' .. opt.bestAccuracy)
+   print(string.format('SUMMARY: ' .. 
+			  '\t epoch: %d' .. 
+			  '\t train_accuracy: %.2f' .. 
+			  '\t test_accuracy: %.2f' .. 
+			  '\t train_loss: %.2f' .. 
+			  '\t test_loss: %.2f' .. 
+			  '\t train_time: %d secs' ..
+			  '\t test_time: %d secs' .. 
+			  '\t best_accuracy: %.2f', 
+		       opt.epoch, train_accuracy, test_accuracy, 
+		       train_loss, test_loss, 
+		       train_time, test_time, opt.bestAccuracy))
    opt.epoch = opt.epoch + 1
 end

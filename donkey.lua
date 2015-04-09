@@ -3,7 +3,7 @@ tds=require 'tds'
 utils=paths.dofile('utils.lua') -- utils.lua in same directory
 torch.setdefaulttensortype('torch.FloatTensor')
 local sampleSize = {3, opt.sampleSize, opt.sampleSize}
-local imagesRoot = paths.concat(opt.dataRoot, 'train_' .. opt.sampleSize)
+local imagesRoot = paths.concat(opt.dataRoot, 'train_' .. opt.loadSize)
 
 local function loadImage(rawJPG)
    local input = image.decompressJPG(rawJPG, 3, 'float')

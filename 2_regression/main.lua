@@ -76,7 +76,7 @@ function train()
 end
 
 function get_correct(outputs, labels)
-   outputs=outputs:float():mul(2.5):add(3.5) -- get the outputs in 1,5 scale
+   outputs=outputs:float():mul(2.0):add(3.0) -- get the outputs in 1,5 scale
    outputs:round()
    outputs[outputs:lt(1)] = 1
    outputs[outputs:gt(5)] = 5
@@ -86,14 +86,14 @@ end
 function trainBatch(inputsCPU, labelsCPU)
    local dataLoadingTime = dataTimer:time().real; timer:reset(); -- timers
    batchNumber = batchNumber + 1
-   labelsCPU:add(-3.5):div(2.5) -- normalize the labels to [-1.0, 1.0]
+   labelsCPU:add(-3.0):div(2.0) -- normalize the labels to [-1.0, 1.0]
    inputs:resize(inputsCPU:size()):copy(inputsCPU)
    labels:resize(labelsCPU:size()):copy(labelsCPU)
 
    local err, outputs = optimizer:optimize(optim.sgd, inputs, labels, criterion)
    loss = loss + err
    -- unnormalize labels for computing correct
-   labelsCPU:mul(2.5):add(3.5)
+   labelsCPU:mul(2.0):add(3.0)
    correct = correct + get_correct(outputs, labelsCPU)
    print(('Epoch: [%d][%d/%d]\tTime %.3f DataTime %.3f Err %.4f '):format(
          opt.epoch, batchNumber, opt.epochSize, timer:time().real, dataLoadingTime, err))

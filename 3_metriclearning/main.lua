@@ -64,8 +64,8 @@ function train()
    local timer = torch.Timer()
    for i=1,opt.epochSize do
       donkeys:addjob(function() 
-	              return {getTrainingMiniBatch(opt.batchSize),
-			      getTrainingMiniBatch(opt.batchSize)}
+            return {getTrainingMiniBatch(opt.batchSize)},
+                   {getTrainingMiniBatch(opt.batchSize)}
 		     end, trainBatch)
    end
    donkeys:synchronize()
@@ -78,25 +78,20 @@ function train()
    train_accuracy = correct
 end
 
-function get_correct(outputs, labels)
-   outputs=outputs:float():mul(2.5):add(3.5) -- get the outputs in 1,5 scale
-   outputs:round()
-   outputs[outputs:lt(1)] = 1
-   outputs[outputs:gt(5)] = 5
-   return outputs:eq(labels):sum()
-end
-
-function trainBatch(inputsCPU)
+function trainBatch(inputsCPU1, inputsCPU2)
    local dataLoadingTime = dataTimer:time().real; timer:reset(); -- timers
    batchNumber = batchNumber + 1
-   labelsCPU:add(-3.5):div(2.5) -- normalize the labels to [-1.0, 1.0]
-   inputs:resize(inputsCPU:size()):copy(inputsCPU)
-   labels:resize(labelsCPU:size()):copy(labelsCPU)
+   local labelsCPU1 = inputsCPU1[2]
+   local labelsCPU2 = inputsCPU2[2]
+   inputsCPU1 = inputsCPU1[1]
+   inputsCPU2 = inputsCPU2[1]
+   labelsCPU1:add(-1, labelsCPU2)
+   inputs1:resize(inputsCPU1:size()):copy(inputsCPU1)
+   inputs2:resize(inputsCPU2:size()):copy(inputsCPU2)
+   labels:resize(labelsCPU1:size()):copy(labelsCPU1)
 
    local err, outputs = optimizer:optimize(optim.sgd, inputs, labels, criterion)
    loss = loss + err
-   -- unnormalize labels for computing correct
-   labelsCPU:mul(2.5):add(3.5)
    correct = correct + get_correct(outputs, labelsCPU)
    print(('Epoch: [%d][%d/%d]\tTime %.3f DataTime %.3f Err %.4f '):format(
          opt.epoch, batchNumber, opt.epochSize, timer:time().real, dataLoadingTime, err))

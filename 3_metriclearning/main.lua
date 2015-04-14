@@ -78,6 +78,11 @@ function train()
    train_accuracy = correct
 end
 
+local function get_correct(o, l)
+   l:round()
+   return l:eq(o):sum()
+end
+
 function trainBatch(inputsCPU1, inputsCPU2)
    local dataLoadingTime = dataTimer:time().real; timer:reset(); -- timers
    batchNumber = batchNumber + 1
@@ -85,14 +90,14 @@ function trainBatch(inputsCPU1, inputsCPU2)
    local labelsCPU2 = inputsCPU2[2]
    inputsCPU1 = inputsCPU1[1]
    inputsCPU2 = inputsCPU2[1]
-   labelsCPU1:add(-1, labelsCPU2)
+   labelsCPU1:add(-1, labelsCPU2) -- to get relative distances
    inputs1:resize(inputsCPU1:size()):copy(inputsCPU1)
    inputs2:resize(inputsCPU2:size()):copy(inputsCPU2)
    labels:resize(labelsCPU1:size()):copy(labelsCPU1)
 
    local err, outputs = optimizer:optimize(optim.sgd, inputs, labels, criterion)
    loss = loss + err
-   correct = correct + get_correct(outputs, labelsCPU)
+   correct = correct + get_correct(outputs, labelsCPU1)
    print(('Epoch: [%d][%d/%d]\tTime %.3f DataTime %.3f Err %.4f '):format(
          opt.epoch, batchNumber, opt.epochSize, timer:time().real, dataLoadingTime, err))
    cutorch.synchronize(); collectgarbage();

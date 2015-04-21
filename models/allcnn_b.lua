@@ -2,15 +2,15 @@ function createModel(nGPU)
    require 'cudnn'
 
    local baseModel = nn.Sequential()
-   baseModel:add(cudnn.SpatialConvolution(3,96,3,3))
+   baseModel:add(cudnn.SpatialConvolution(3,96,5,5))
    baseModel:add(cudnn.ReLU(true))
-   baseModel:add(cudnn.SpatialConvolution(96,96,3,3))
+   baseModel:add(cudnn.SpatialConvolution(96,96,1,1))
    baseModel:add(cudnn.ReLU(true))
    baseModel:add(cudnn.SpatialConvolution(96,96,3,3,2,2))
    baseModel:add(cudnn.ReLU(true))
-   baseModel:add(cudnn.SpatialConvolution(96,192,3,3))
+   baseModel:add(cudnn.SpatialConvolution(96,192,5,5))
    baseModel:add(cudnn.ReLU(true))
-   baseModel:add(cudnn.SpatialConvolution(192,192,3,3))
+   baseModel:add(cudnn.SpatialConvolution(192,192,1,1))
    baseModel:add(cudnn.ReLU(true))
    baseModel:add(cudnn.SpatialConvolution(192,192,3,3,2,2))
    baseModel:add(cudnn.ReLU(true))
@@ -31,4 +31,3 @@ function createModel(nGPU)
    local model = nn.Sequential():add(baseModel):add(higherLayer)
    return model
 end
-

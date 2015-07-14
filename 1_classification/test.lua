@@ -47,6 +47,7 @@ utils=paths.dofile('../utils.lua') -- utils.lua in same directory
 diskModel = torch.load(opt.testModel)
 
 model = diskModel.model
+--print(diskModel)
 model:cuda()
 
 collectgarbage()
@@ -66,17 +67,23 @@ function loadImage(rawImage)
     input = image.decompressJPG(rawImage,'3','float')
     iW = input:size(2)
     iH = input:size(3)
-    if iH < iW and iH ~= opt.loadSize then
-        input = image.scale(input, opt.loadSize, opt.loadSize * iW/iH)
-    elseif iW ~= opt.loadSize then
-        input = image.scale(input,opt.loadSize*iH/iW,opt.loadSize)
+    
+    if iH < iW and iH ~= tonumber(opt.loadSize) then
+        input = image.scale(input, opt.loadSize, opt.loadSize * iW / iH)
+    elseif iW ~= tonumber(opt.loadSize) then
+        if (opt.loadSize * iH/iW) < opt.sampleSize then
+	   input = image.scale(input,opt.loadSize,opt.loadSize)
+	else
+           input = image.scale(input, opt.loadSize,opt.loadSize * iH / iW)
+	end
     end
     for i=1,3 do
     	if mean then input[{{i},{},{}}]:add(-mean[i]) end
 	if std then input[{{i},{},{}}]:div(std[i]) end
     end
-    w1 = math.ceil((input:size(2)-opt.sampleSize)/2)
-    h1 = math.ceil((input:size(3)-opt.sampleSize)/2)
+
+    w1 = math.ceil(math.abs((input:size(2)-opt.sampleSize))/2)
+    h1 = math.ceil(math.abs((input:size(3)-opt.sampleSize))/2)
     return image.crop(input,h1,w1,h1+opt.sampleSize,w1+opt.sampleSize)
 end
 
@@ -87,25 +94,26 @@ function getTestingMiniBatch(indexStart,indexEnd)
     for i=1,quantity do
     	local out = loadImage(utils.loadFileAsByteTensor(files[i+indexStart-1]))
 	data[i]:copy(out)
-	table.insert(filenames,files[i])
+	table.insert(filenames,files[i+indexStart-1])
     end
     return data,filenames
 end
 
 
-local numBatches = (#files)/opt.batchSize
+local numBatches = (#files + opt.batchSize-1)/opt.batchSize
 print('numBatches: '..numBatches)
---local numBatches = 1
 
 df = torch.DiskFile('predictions','rw')
 for batchNumber = 1,numBatches do
 
-    print('Processing batchNumber: '..batchNumber)    
-    local batchSize = math.min(opt.batchSize, math.abs(batchNumber * opt.batchSize - #files))
-    local indexStart = 1 + (batchNumber-1) * batchSize
-    local indexEnd = indexStart + batchSize - 1
+    local batchElems = math.min(opt.batchSize, math.abs((batchNumber-1) * opt.batchSize - #files))
+    print('Processing batchNumber: '..batchNumber..', batchSize: '..batchElems)
+
+    local indexStart = 1 + (batchNumber-1) * opt.batchSize
+    local indexEnd = indexStart + batchElems - 1
+
     local inputs, filenames = getTestingMiniBatch(indexStart,indexEnd)
-    
+   
     local inputGPU = torch.CudaTensor()
     inputGPU:resize(inputs:size()):copy(inputs)
 
@@ -114,9 +122,11 @@ for batchNumber = 1,numBatches do
     local time = sys.clock()    
     for j=1,outputBatch:size(1) do
     	local i = 1
-    	output = outputBatch[j]
+    	local output = outputBatch[j]
+	if paths.basename(filenames[j]) == '120_left.jpeg' then print(filenames[j]) end
     	output:apply(function(x) if x == output:max() then df:writeString(paths.basename(filenames[j])..','..i-1) df:writeString('\n') end i=i+1 end)
     end
+    
     time = (sys.clock() - time)/outputBatch:size(1)
     print('Time per test example: '..time)
     collectgarbage()

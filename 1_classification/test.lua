@@ -3,6 +3,7 @@ require 'optim'
 require 'pl'
 require 'cudnn'
 require 'image'
+local tds = require 'tds'
 local dir = require 'pl.dir'
 
 paths.dofile('../fbcunn_files/AbstractParallel.lua')
@@ -26,11 +27,12 @@ opt = {
    model='small', -- models/[name].lua will be loaded
    bestAccuracy = 0,
    test='',
-   testModel='model_8.t7',
+   testModel='results/l2pooling/model_29.t7',
    retrain='',
    loadSize=256, -- height/width of image to load
-   sampleSize=240,-- height/width of image to sample
-   dataRoot='../data' -- data in current folder
+   sampleSize=224,-- height/width of image to sample
+   dataRoot='../data', -- data in current folder
+   validation=''
 }
 
 -- one-line argument parser. parses enviroment variables to override the defaults
@@ -53,7 +55,31 @@ model:cuda()
 collectgarbage()
 print('Loaded Model from model file.')
 
-local files  = dir.getfiles(paths.concat('../data','test'))
+--local files  = dir.getfiles(paths.concat(opt.dataRoot,'test'))
+
+function get_validation_set()
+    local val_data = tds.hash()
+    local val_data_labels = tds.hash()
+
+    for line in io.lines(paths.concat(opt.dataRoot, 'val_labels.txt')) do
+    	local filename,label = unpack(line:split(','))
+    	label = tonumber(label)
+    	val_data[#val_data+1] = paths.concat(paths.concat(opt.dataRoot,'train'),filename..'.jpeg')
+    	val_data_row = tds.hash()
+    	val_data_row['name'] = filename
+    	val_data_row['label'] = label
+    	val_data_labels[#val_data_labels+1] = val_data_row
+    end
+    return val_data, val_data_labels
+end
+
+if opt.validation ~='' then
+   files, val_data_labels = get_validation_set()
+else
+   files = dir.getfiles(paths.concat(opt.dataRoot,'test'))
+   print("num files: "..#files)
+end
+
 local meanstdCache = paths.concat(paths.cwd(),'meanstdCache.t7')
 
 if paths.filep(meanstdCache) then
@@ -103,7 +129,9 @@ end
 local numBatches = (#files + opt.batchSize-1)/opt.batchSize
 print('numBatches: '..numBatches)
 
-df = torch.DiskFile('predictions','rw')
+local predictions = tds.hash()
+local totalTime = sys.clock()
+
 for batchNumber = 1,numBatches do
 
     local batchElems = math.min(opt.batchSize, math.abs((batchNumber-1) * opt.batchSize - #files))
@@ -118,17 +146,46 @@ for batchNumber = 1,numBatches do
     inputGPU:resize(inputs:size()):copy(inputs)
 
     outputBatch = torch.exp(model:forward(inputGPU))
-    predictions = {}
+
     local time = sys.clock()    
     for j=1,outputBatch:size(1) do
     	local i = 1
     	local output = outputBatch[j]
-	if paths.basename(filenames[j]) == '120_left.jpeg' then print(filenames[j]) end
-    	output:apply(function(x) if x == output:max() then df:writeString(paths.basename(filenames[j])..','..i-1) df:writeString('\n') end i=i+1 end)
+	local filename = unpack(paths.basename(filenames[j]):split('.jpeg'))
+    	output:apply(function(x) if x == output:max() then prediction=tds.hash() prediction['name']=filename prediction['label']=i-1 predictions[#predictions+1]=prediction end i=i+1 end)
     end
-    
+
     time = (sys.clock() - time)/outputBatch:size(1)
     print('Time per test example: '..time)
     collectgarbage()
 end
+totalTime = sys.clock() - totalTime
+print('Total Time taken including data loading and prep: '..totalTime)
+
+local counter = 0
+local err = 0
+
+local df = torch.DiskFile('predictions','rw')
+df:writeString('image,level')
+df:writeString('\n')
+for i=1,#predictions do
+    pFilename = predictions[i]['name']
+    pLabel = predictions[i]['label']
+    df:writeString(pFilename..','..pLabel)
+    df:writeString('\n')
+
+    if opt.validation ~= '' then
+        vFilename = val_data_labels[i]['name']
+   	vLabel = val_data_labels[i]['label']
+	if pFilename == vFilename then counter = counter + 1 end
+	if pLabel ~= vLabel then err = err + 1 end
+    end
+end
 df:close()
+
+if opt.validation ~= '' then
+   print('Total Predictions: '..#predictions..', counter: '..counter..', err: '..err)
+   local accuracy = (tonumber(counter) - tonumber(err)) / tonumber(counter)
+   print('Model Accuracy on Validation Set: '..accuracy)
+end
+

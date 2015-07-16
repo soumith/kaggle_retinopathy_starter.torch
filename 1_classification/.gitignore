@@ -1,8 +1,0 @@
-data/train
-data/test
-data/trainLabels.csv
-data/train_labels.txt
-data/val_labels.txt
-meanstdCache.t7
-*.t7
-\#*

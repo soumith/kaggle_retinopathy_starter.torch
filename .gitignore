@@ -1,10 +1,12 @@
-data/train_256
-data/test_256
-data/train_64
-data/test_64
+data/train
+data/test
 data/trainLabels.csv
 data/train_labels.txt
 data/val_labels.txt
 meanstdCache.t7
 *.t7
 \#*
+data/*
+../data/*
+results/*
+pred/*

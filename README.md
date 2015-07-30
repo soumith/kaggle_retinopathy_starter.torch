@@ -3,6 +3,8 @@ A starter kit in Torch for Kaggle Diabetic Retinopathy Detection.
 It showcases:
 - Classification
 - Regression
+ 
+DID NOT FINISH IMPLEMENTING:
 - Metric Learning (Siamese and triplet networks)
 - Averaging model ensembles
 

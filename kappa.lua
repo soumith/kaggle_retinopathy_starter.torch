@@ -43,6 +43,7 @@ function random_indices(num_indices, low, high)
     return indices
 end
 
+--[[
 local num_ratings = 5
 local batch_size=128
 -- for testing.
@@ -55,4 +56,6 @@ local pred_indices = random_indices(128, 1, 6)
 convert_to_one_hot_vector_rep(batch_size,pred,pred_indices)
 
 print("Kappa: "..quad_kappa(actual, pred))
+
+--]]
 
